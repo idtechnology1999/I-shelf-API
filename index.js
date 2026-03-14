@@ -11,6 +11,7 @@ const readerRoutes = require('./Routes/reader');
 const adminRoutes = require('./Routes/admin');
 
 
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -25,6 +26,7 @@ app.use('/api/authors', authorRoutes);
 app.use('/api/author', authorRoutes); // Alias for singular form
 app.use('/api/readers', readerRoutes);
 app.use('/api/admin', adminRoutes);
+
 
 app.get('/', (req, res) => {
   res.send('Server is running 🚀');

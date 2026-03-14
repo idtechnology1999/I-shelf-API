@@ -1,11 +1,14 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const Reader = require('../../models/Reader.model');
 const Notification = require('../../models/Notification.model');
 const { SECRET_KEY } = require('../../config/env');
 
 const router = express.Router();
+
+const generateReferralCode = () => 'ISH-' + crypto.randomBytes(4).toString('hex').toUpperCase();
 
 // READER REGISTRATION
 router.post('/register', async (req, res) => {
@@ -23,7 +26,8 @@ router.post('/register', async (req, res) => {
       fullName,
       email,
       institution,
-      password: hashedPassword
+      password: hashedPassword,
+      referralCode: generateReferralCode()
     });
 
     await reader.save();
@@ -90,7 +94,8 @@ router.post('/login', async (req, res) => {
         id: reader._id,
         fullName: reader.fullName,
         email: reader.email,
-        institution: reader.institution
+        institution: reader.institution,
+        referralCode: reader.referralCode || null
       }
     });
   } catch (error) {

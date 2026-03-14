@@ -41,7 +41,7 @@ router.patch('/:id/verify', authMiddleware, async (req, res) => {
     const author = await Author.findByIdAndUpdate(
       req.params.id,
       { isVerified: true },
-      { returnDocument: 'after' }
+      { new: true }
     ).select('-password');
 
     if (!author) {
@@ -70,7 +70,7 @@ router.patch('/:id/suspend', authMiddleware, async (req, res) => {
     const author = await Author.findByIdAndUpdate(
       req.params.id,
       { isVerified: false },
-      { returnDocument: 'after' }
+      { new: true }
     ).select('-password');
 
     if (!author) {
@@ -102,6 +102,19 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Author not found' });
     }
 
+    const Book = require('../../models/Book.model');
+    const Transaction = require('../../models/Transaction.model');
+    const Payment = require('../../models/Payment.model');
+
+    // Delete all author's books
+    await Book.deleteMany({ authorId: req.params.id });
+
+    // Delete all author's transactions
+    await Transaction.deleteMany({ author: req.params.id });
+
+    // Delete all author's payments
+    await Payment.deleteMany({ authorId: req.params.id });
+
     await Notification.create({
       type: 'author_deleted',
       userId: author._id,
@@ -113,7 +126,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
     await Author.findByIdAndDelete(req.params.id);
 
-    res.json({ message: 'Author deleted successfully' });
+    res.json({ message: 'Author and all related data deleted successfully' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

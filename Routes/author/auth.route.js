@@ -9,7 +9,7 @@ const router = express.Router();
 
 // AUTHOR REGISTRATION
 router.post('/register', async (req, res) => {
-  const { fullName, email, institution, governmentId, displayName, areasOfExpertise, shortBio, password } = req.body;
+  const { fullName, email, institution, governmentId, displayName, areasOfExpertise, shortBio, password, referralCode } = req.body;
 
   try {
     const existingAuthor = await Author.findOne({ email });
@@ -19,6 +19,14 @@ router.post('/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Find reader by referral code if provided
+    let referredBy = null;
+    if (referralCode) {
+      const Reader = require('../../models/Reader.model');
+      const referrer = await Reader.findOne({ referralCode: referralCode.trim().toUpperCase() });
+      if (referrer) referredBy = referrer._id;
+    }
+
     const author = new Author({
       fullName,
       email,
@@ -27,10 +35,22 @@ router.post('/register', async (req, res) => {
       displayName,
       areasOfExpertise,
       shortBio,
-      password: hashedPassword
+      password: hashedPassword,
+      ...(referredBy && { referredBy })
     });
 
     await author.save();
+
+    // Create pending referral earning immediately so reader can see the referral
+    if (referredBy) {
+      const ReferralEarning = require('../../models/ReferralEarning.model');
+      await ReferralEarning.create({
+        readerId: referredBy,
+        authorId: author._id,
+        amount: 4000,
+        status: 'pending'
+      });
+    }
 
     // Create notification
     await Notification.create({

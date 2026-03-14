@@ -14,6 +14,20 @@ const authorSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { type: String, default: 'author' },
   isVerified: { type: Boolean, default: false },
+  
+  // Bank Account for Paystack Subaccount
+  bankAccount: {
+    accountNumber: String,
+    accountName: String,
+    bankName: String,
+    bankCode: String
+  },
+  
+  // Paystack Subaccount (for receiving 80% of book sales)
+  subaccountCode: { type: String },
+  hasPaidUploadFee: { type: Boolean, default: false },
+  referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Reader' }, // reader who referred this author
+  
   createdAt: { type: Date, default: Date.now }
 });
 

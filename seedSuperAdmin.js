@@ -22,7 +22,8 @@ const createSuperAdmin = async () => {
       password: hashedPassword,
       fullName: 'Super Admin',
       role: 'superadmin',
-      isActive: true
+      isActive: true,
+      isSetupComplete: true
     });
 
     await superAdmin.save();

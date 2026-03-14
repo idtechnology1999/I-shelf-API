@@ -1,0 +1,270 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Blackpoint Bookings</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .page { background: white; margin-bottom: 20px; padding: 30px; border-radius: 8px; page-break-after: always; }
+        .header { border-bottom: 3px solid #B91C1C; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h1 { margin: 0; color: #B91C1C; font-size: 24px; }
+        .header p { margin: 5px 0 0 0; color: #666; font-size: 12px; }
+        .section { margin-bottom: 20px; }
+        .section-title { background: #f0f0f0; padding: 10px 15px; font-weight: bold; color: #B91C1C; margin-bottom: 10px; border-left: 3px solid #B91C1C; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px; }
+        .field { }
+        .field-label { font-weight: bold; color: #333; font-size: 12px; margin-bottom: 3px; }
+        .field-value { color: #666; font-size: 13px; }
+        .full-width { grid-column: 1 / -1; }
+        .footer { border-top: 1px solid #ddd; padding-top: 10px; margin-top: 20px; font-size: 10px; color: #999; }
+      </style>
+    </head>
+    <body>
+  
+      <div class="page">
+        <div class="header">
+          <h1>BLACKPOINT STUDIO</h1>
+          <p>Booking Inquiry #3</p>
+        </div>
+
+        <div class="section">
+          <div class="section-title">CLIENT INFORMATION</div>
+          <div class="row">
+            <div class="field">
+              <div class="field-label">Full Name</div>
+              <div class="field-value">Bintu opeyemi</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Email</div>
+              <div class="field-value">balogunopeye@gmail.com</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Phone</div>
+              <div class="field-value">+2347086292944</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Company</div>
+              <div class="field-value">polyibadan</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">PROJECT DETAILS</div>
+          <div class="row">
+            <div class="field">
+              <div class="field-label">Service</div>
+              <div class="field-value">Mastering</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Project Name</div>
+              <div class="field-value">kunle</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Project Type</div>
+              <div class="field-value">music-video</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Budget</div>
+              <div class="field-value">100k+</div>
+            </div>
+            <div class="field full-width">
+              <div class="field-label">Description</div>
+              <div class="field-value">jkfg</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">TIMELINE</div>
+          <div class="row">
+            <div class="field">
+              <div class="field-label">Start Date</div>
+              <div class="field-value">2016-02-09</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Delivery Date</div>
+              <div class="field-value">2019-02-12</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Urgency</div>
+              <div class="field-value">rush</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Status</div>
+              <div class="field-value">new</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>Generated on March 13, 2026</p>
+          <p>hello@blackpoint.studio | blackpoint.studio</p>
+        </div>
+      </div>
+    
+      <div class="page">
+        <div class="header">
+          <h1>BLACKPOINT STUDIO</h1>
+          <p>Booking Inquiry #2</p>
+        </div>
+
+        <div class="section">
+          <div class="section-title">CLIENT INFORMATION</div>
+          <div class="row">
+            <div class="field">
+              <div class="field-label">Full Name</div>
+              <div class="field-value">owolabi</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Email</div>
+              <div class="field-value">id@gmail.com</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Phone</div>
+              <div class="field-value">+2349086292944</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Company</div>
+              <div class="field-value">adekunle</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">PROJECT DETAILS</div>
+          <div class="row">
+            <div class="field">
+              <div class="field-label">Service</div>
+              <div class="field-value">Photo Shoot</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Project Name</div>
+              <div class="field-value">adekune</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Project Type</div>
+              <div class="field-value">music-video</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Budget</div>
+              <div class="field-value">100k+</div>
+            </div>
+            <div class="field full-width">
+              <div class="field-label">Description</div>
+              <div class="field-value">fdf</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">TIMELINE</div>
+          <div class="row">
+            <div class="field">
+              <div class="field-label">Start Date</div>
+              <div class="field-value">1999-12-02</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Delivery Date</div>
+              <div class="field-value">1010-02-12</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Urgency</div>
+              <div class="field-value">standard</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Status</div>
+              <div class="field-value">new</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>Generated on March 13, 2026</p>
+          <p>hello@blackpoint.studio | blackpoint.studio</p>
+        </div>
+      </div>
+    
+      <div class="page">
+        <div class="header">
+          <h1>BLACKPOINT STUDIO</h1>
+          <p>Booking Inquiry #1</p>
+        </div>
+
+        <div class="section">
+          <div class="section-title">CLIENT INFORMATION</div>
+          <div class="row">
+            <div class="field">
+              <div class="field-label">Full Name</div>
+              <div class="field-value">owolabi idowu</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Email</div>
+              <div class="field-value">owolabiidowu99@gmail.com</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Phone</div>
+              <div class="field-value">+2347086292944</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Company</div>
+              <div class="field-value">polyibadan</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">PROJECT DETAILS</div>
+          <div class="row">
+            <div class="field">
+              <div class="field-label">Service</div>
+              <div class="field-value">Photo Shoot</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Project Name</div>
+              <div class="field-value">portfolio</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Project Type</div>
+              <div class="field-value">commercial</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Budget</div>
+              <div class="field-value">5k-15k</div>
+            </div>
+            <div class="field full-width">
+              <div class="field-label">Description</div>
+              <div class="field-value">fdvd</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">TIMELINE</div>
+          <div class="row">
+            <div class="field">
+              <div class="field-label">Start Date</div>
+              <div class="field-value">1999-02-12</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Delivery Date</div>
+              <div class="field-value">1999-02-12</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Urgency</div>
+              <div class="field-value">standard</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Status</div>
+              <div class="field-value">new</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>Generated on March 13, 2026</p>
+          <p>hello@blackpoint.studio | blackpoint.studio</p>
+        </div>
+      </div>
+    </body></html>

@@ -2,8 +2,28 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const Reader = require('../../models/Reader.model');
 const authMiddleware = require('../../middlewares/authMiddleware');
+
+const generateReferralCode = () => 'ISH-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+
+// GET or generate referral code for existing users
+router.get('/referral', authMiddleware, async (req, res) => {
+  try {
+    let reader = await Reader.findById(req.user.id).select('referralCode');
+    if (!reader.referralCode) {
+      reader = await Reader.findByIdAndUpdate(
+        req.user.id,
+        { referralCode: generateReferralCode() },
+        { new: true }
+      ).select('referralCode');
+    }
+    res.json({ referralCode: reader.referralCode });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 router.post('/upload-image', authMiddleware, async (req, res) => {
   try {

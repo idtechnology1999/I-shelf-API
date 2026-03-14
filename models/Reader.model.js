@@ -13,6 +13,13 @@ const readerSchema = new mongoose.Schema({
   role: { type: String, default: 'reader' },
   isVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
+  referralCode: { type: String, unique: true, sparse: true },
+  bankAccount: {
+    accountNumber: { type: String },
+    accountName: { type: String },
+    bankName: { type: String },
+    bankCode: { type: String }
+  },
   createdAt: { type: Date, default: Date.now }
 });
 
