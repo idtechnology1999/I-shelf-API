@@ -8,6 +8,8 @@ const transactionSchema = new mongoose.Schema({
   authorAmount: { type: Number, required: true }, // 80%
   platformCommission: { type: Number, required: true }, // 20%
   status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
+  settled: { type: Boolean, default: false }, // Track if author has been paid
+  settledAt: { type: Date },
   paymentReference: { type: String, unique: true },
   paystackResponse: { type: Object },
   createdAt: { type: Date, default: Date.now }

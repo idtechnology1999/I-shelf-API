@@ -78,30 +78,31 @@ router.post('/upload', authMiddleware, async (req, res) => {
     const authorId = req.user.id;
     const bookData = req.body;
 
-    // Check for active payment
-    const activePayment = await Payment.findOne({
-      authorId,
-      status: 'success',
-      bookUploadCompleted: false
-    }).sort({ createdAt: -1 });
+    // Check author has paid upload fee
+    const Author = require('../../models/Author.model');
+    const author = await Author.findById(authorId).select('hasPaidUploadFee');
 
-    if (!activePayment) {
+    if (!author?.hasPaidUploadFee) {
       return res.status(403).json({ message: 'No active payment found. Please pay upload fee first.' });
     }
 
+    // Find the payment record for linking
+    const activePayment = await Payment.findOne({
+      authorId,
+      status: 'success'
+    }).sort({ createdAt: -1 });
+
     // Check if book already exists for this payment
-    let book = await Book.findOne({ paymentId: activePayment._id });
+    let book = activePayment ? await Book.findOne({ paymentId: activePayment._id, status: 'draft' }) : null;
 
     if (book) {
-      // Update existing book
       Object.assign(book, bookData);
       book.updatedAt = new Date();
       await book.save();
     } else {
-      // Create new book
       book = new Book({
         authorId,
-        paymentId: activePayment._id,
+        paymentId: activePayment?._id,
         ...bookData
       });
       await book.save();
@@ -122,19 +123,14 @@ router.post('/upload', authMiddleware, async (req, res) => {
 router.get('/draft', authMiddleware, async (req, res) => {
   try {
     const authorId = req.user.id;
+    const Author = require('../../models/Author.model');
+    const author = await Author.findById(authorId).select('hasPaidUploadFee');
 
-    const activePayment = await Payment.findOne({
-      authorId,
-      status: 'success',
-      bookUploadCompleted: false
-    }).sort({ createdAt: -1 });
-
-    if (!activePayment) {
+    if (!author?.hasPaidUploadFee) {
       return res.json({ book: null });
     }
 
-    const book = await Book.findOne({ paymentId: activePayment._id });
-
+    const book = await Book.findOne({ authorId, status: 'draft' }).sort({ createdAt: -1 });
     res.json({ book });
   } catch (error) {
     console.error(error);
@@ -146,8 +142,26 @@ router.get('/draft', authMiddleware, async (req, res) => {
 router.get('/my-books', authMiddleware, async (req, res) => {
   try {
     const authorId = req.user.id;
+    const Transaction = require('../../models/Transaction.model');
+    
     const books = await Book.find({ authorId }).sort({ createdAt: -1 });
-    res.json({ books });
+    
+    // Get sales count for each book
+    const booksWithSales = await Promise.all(
+      books.map(async (book) => {
+        const salesCount = await Transaction.countDocuments({
+          book: book._id,
+          status: 'completed'
+        });
+        
+        return {
+          ...book.toObject(),
+          salesCount
+        };
+      })
+    );
+    
+    res.json({ books: booksWithSales });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -222,17 +236,13 @@ router.post('/complete', authMiddleware, async (req, res) => {
   try {
     const authorId = req.user.id;
 
-    const activePayment = await Payment.findOne({
-      authorId,
-      status: 'success',
-      bookUploadCompleted: false
-    }).sort({ createdAt: -1 });
-
-    if (!activePayment) {
+    const Author = require('../../models/Author.model');
+    const author = await Author.findById(authorId).select('hasPaidUploadFee');
+    if (!author?.hasPaidUploadFee) {
       return res.status(404).json({ message: 'No active payment found' });
     }
 
-    const book = await Book.findOne({ paymentId: activePayment._id });
+    const book = await Book.findOne({ authorId, status: 'draft' }).sort({ createdAt: -1 });
 
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });
@@ -269,10 +279,6 @@ router.post('/complete', authMiddleware, async (req, res) => {
       });
     }
 
-    // Mark payment as completed
-    activePayment.bookUploadCompleted = true;
-    await activePayment.save();
-
     res.json({
       success: true,
       message: 'Book uploaded successfully and pending verification',
@@ -293,23 +299,16 @@ router.post('/upload-cover', authMiddleware, uploadCover.single('coverImage'), a
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const activePayment = await Payment.findOne({
-      authorId,
-      status: 'success',
-      bookUploadCompleted: false
-    }).sort({ createdAt: -1 });
-
-    if (!activePayment) {
+    const Author = require('../../models/Author.model');
+    const author = await Author.findById(authorId).select('hasPaidUploadFee');
+    if (!author?.hasPaidUploadFee) {
       return res.status(403).json({ message: 'No active payment found' });
     }
-
-    const book = await Book.findOne({ paymentId: activePayment._id });
-
+    const activePayment = await Payment.findOne({ authorId, status: 'success' }).sort({ createdAt: -1 });
+    const book = await Book.findOne({ authorId, status: 'draft' }).sort({ createdAt: -1 });
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });
     }
-
-    // Delete old cover if exists
     if (book.coverImage) {
       const oldPath = path.join(__dirname, '../../', book.coverImage);
       if (fs.existsSync(oldPath)) {
@@ -340,23 +339,17 @@ router.post('/upload-pdf', authMiddleware, uploadPdf.single('pdfFile'), async (r
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const activePayment = await Payment.findOne({
-      authorId,
-      status: 'success',
-      bookUploadCompleted: false
-    }).sort({ createdAt: -1 });
-
-    if (!activePayment) {
+    const Author = require('../../models/Author.model');
+    const author = await Author.findById(authorId).select('hasPaidUploadFee');
+    if (!author?.hasPaidUploadFee) {
       return res.status(403).json({ message: 'No active payment found' });
     }
 
-    const book = await Book.findOne({ paymentId: activePayment._id });
+    const book = await Book.findOne({ authorId, status: 'draft' }).sort({ createdAt: -1 });
 
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });
     }
-
-    // Delete old PDF if exists
     if (book.pdfFile) {
       const oldPath = path.join(__dirname, '../../', book.pdfFile);
       if (fs.existsSync(oldPath)) {

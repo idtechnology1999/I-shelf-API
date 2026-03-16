@@ -23,7 +23,7 @@ router.get('/notifications', authMiddleware, async (req, res) => {
         id: `reg-${e._id}`,
         type: 'registered',
         message: `🎉 ${authorName} signed up using your referral link!`,
-        sub: 'You will earn ₦4,000 once they pay the upload fee.',
+        sub: 'You will earn ₦2,000 once they pay the upload fee.',
         time: e.createdAt,
         read: false,
       });
@@ -34,7 +34,7 @@ router.get('/notifications', authMiddleware, async (req, res) => {
           id: `paid-${e._id}`,
           type: 'earned',
           message: `💰 ${authorName} has paid the upload fee!`,
-          sub: 'Your ₦4,000 referral reward is now available. Go to earnings to request payout.',
+          sub: 'Your ₦2,000 referral reward is now available. Go to earnings to request payout.',
           time: e.createdAt,
           read: false,
         });
@@ -57,7 +57,7 @@ router.get('/notifications', authMiddleware, async (req, res) => {
         notifications.push({
           id: `done-${e._id}`,
           type: 'paid',
-          message: `✅ ₦4,000 has been sent to your bank account!`,
+          message: `✅ ₦2,000 has been sent to your bank account!`,
           sub: `Payment for referring ${authorName} is complete.`,
           time: e.paidAt,
           read: false,

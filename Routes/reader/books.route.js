@@ -71,8 +71,8 @@ router.get('/my/purchases', authMiddleware, async (req, res) => {
       reader: readerId, 
       status: 'completed' 
     })
-    .populate('book')
-    .populate('author', 'displayName')
+    .populate({ path: 'book', populate: { path: 'authorId', select: 'displayName fullName' } })
+    .populate('author', 'displayName fullName')
     .sort({ createdAt: -1 });
 
     res.json({ purchases: transactions });
@@ -171,7 +171,14 @@ router.get('/read/:bookId', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Book not found' });
     }
 
-    const pdfUrl = `${req.protocol}://${req.get('host')}/${book.pdfFile}`;
+    // Check if file exists
+    const filePath = path.join(__dirname, '../../', book.pdfFile);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'Book file not found on server' });
+    }
+
+    const baseUrl = process.env.PORT ? `http://localhost:${process.env.PORT}` : `${req.protocol}://${req.get('host')}`;
+    const pdfUrl = book.pdfFile.startsWith('/') ? `${baseUrl}${book.pdfFile}` : `${baseUrl}/${book.pdfFile}`;
     
     res.json({ 
       book: {
@@ -182,6 +189,74 @@ router.get('/read/:bookId', authMiddleware, async (req, res) => {
         pageCount: book.pageCount
       }
     });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// STREAM PDF FOR READING
+router.get('/stream/:bookId', async (req, res) => {
+  try {
+    let readerId;
+    
+    // Check for token in Authorization header or query parameter
+    const authHeader = req.headers.authorization;
+    const tokenFromQuery = req.query.token;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const jwt = require('jsonwebtoken');
+      const token = authHeader.substring(7);
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        readerId = decoded.id;
+      } catch (error) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+    } else if (tokenFromQuery) {
+      const jwt = require('jsonwebtoken');
+      try {
+        const decoded = jwt.verify(tokenFromQuery, process.env.JWT_SECRET);
+        readerId = decoded.id;
+      } catch (error) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+    } else {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    const { bookId } = req.params;
+
+    // Verify user has purchased this book
+    const transaction = await Transaction.findOne({
+      reader: readerId,
+      book: bookId,
+      status: 'completed'
+    });
+
+    if (!transaction) {
+      return res.status(403).json({ message: 'You have not purchased this book' });
+    }
+
+    const book = await Book.findById(bookId);
+    if (!book || !book.pdfFile) {
+      return res.status(404).json({ message: 'Book file not found' });
+    }
+
+    const filePath = path.join(__dirname, '../../', book.pdfFile);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'Book file not found on server' });
+    }
+
+    const stat = fs.statSync(filePath);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Length', stat.size);
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Accept-Ranges', 'bytes');
+    
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

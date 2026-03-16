@@ -1,9 +1,12 @@
 const dotenv = require('dotenv');
 const path = require('path');
 
-// Load environment variables from config folder
-dotenv.config({ path: path.resolve(__dirname, '.env.development.local') });
-dotenv.config({ path: path.resolve(__dirname, '.env.production.local') });
+// Load environment variables based on NODE_ENV
+const envFile = process.env.NODE_ENV === 'production'
+  ? '.env.production.local'
+  : '.env.development.local';
+
+dotenv.config({ path: path.resolve(__dirname, envFile) });
 
 module.exports = {
   PORT: process.env.PORT,

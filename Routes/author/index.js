@@ -9,6 +9,7 @@ const statsRoutes = require('./stats.route');
 const virtualAccountRoutes = require('./virtualAccount.route');
 const subaccountRoutes = require('./subaccount.route');
 const withdrawalRoutes = require('./withdrawal.route');
+const settlementRoutes = require('./settlement.route');
 
 const router = express.Router();
 
@@ -23,5 +24,6 @@ router.use('/dashboard', statsRoutes);
 router.use('/virtual-account', virtualAccountRoutes);
 router.use('/subaccount', subaccountRoutes);
 router.use('/withdrawal', withdrawalRoutes);
+router.use('/settlement', settlementRoutes);
 
 module.exports = router;

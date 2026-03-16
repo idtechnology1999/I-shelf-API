@@ -12,6 +12,7 @@ const dashboardRoutes = require('./dashboard.route');
 const transactionsRoutes = require('./transactions.route');
 const usersRoutes = require('./users.route');
 const readerFinanceRoutes = require('./reader-finance.route');
+const platformRoutes = require('./platform.route');
 
 const router = express.Router();
 
@@ -28,5 +29,6 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/transactions', transactionsRoutes);
 router.use('/users', usersRoutes);
 router.use('/reader-finance', readerFinanceRoutes);
+router.use('/platform', platformRoutes);
 
 module.exports = router;

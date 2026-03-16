@@ -10,20 +10,6 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Hardcoded superadmin fallback
-    if (email === 'admin@gmail.com' && password === 'admin123') {
-      const token = jwt.sign(
-        { id: 'superadmin', email, role: 'superadmin' },
-        process.env.SECRET_KEY,
-        { expiresIn: '7d' }
-      );
-      return res.json({
-        message: 'Login successful',
-        token,
-        admin: { id: 'superadmin', email, fullName: 'Super Admin', role: 'superadmin', isSetupComplete: true }
-      });
-    }
-
     const admin = await Admin.findOne({ email });
     if (!admin) {
       return res.status(401).json({ message: 'Invalid credentials' });

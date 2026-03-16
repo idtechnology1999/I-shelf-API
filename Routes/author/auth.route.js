@@ -47,7 +47,7 @@ router.post('/register', async (req, res) => {
       await ReferralEarning.create({
         readerId: referredBy,
         authorId: author._id,
-        amount: 4000,
+        amount: 2000,
         status: 'pending'
       });
     }

@@ -49,18 +49,51 @@ router.get('/purchases', authMiddleware, async (req, res) => {
     })
     .populate('book', 'title coverImage')
     .populate('reader', 'firstName lastName')
-    .sort({ createdAt: -1 })
-    .limit(10);
+    .sort({ createdAt: -1 });
 
-    const purchases = transactions.map(txn => ({
-      id: txn._id,
-      title: txn.book?.title || 'Unknown Book',
-      date: txn.createdAt,
-      amount: txn.authorAmount,
-      coverImage: txn.book?.coverImage,
-      readerName: txn.reader ? `${txn.reader.firstName} ${txn.reader.lastName}` : 'Unknown',
-      status: txn.status
-    }));
+    // Group transactions by book
+    const bookMap = new Map();
+    
+    for (const txn of transactions) {
+      if (txn.book) {
+        const bookId = txn.book._id.toString();
+        
+        if (!bookMap.has(bookId)) {
+          // Get unique buyers for this book
+          const uniqueReaders = await Transaction.distinct('reader', {
+            book: txn.book._id,
+            status: 'completed'
+          });
+          
+          // Get total sales count
+          const salesCount = await Transaction.countDocuments({
+            book: txn.book._id,
+            status: 'completed'
+          });
+          
+          // Calculate total earnings for this book
+          const bookTransactions = await Transaction.find({
+            book: txn.book._id,
+            author: authorId,
+            status: 'completed'
+          });
+          const totalEarnings = bookTransactions.reduce((sum, t) => sum + t.authorAmount, 0);
+          
+          bookMap.set(bookId, {
+            id: txn.book._id,
+            title: txn.book.title,
+            coverImage: txn.book.coverImage,
+            uniqueBuyers: uniqueReaders.length,
+            salesCount: salesCount,
+            totalEarnings: totalEarnings,
+            lastSaleDate: txn.createdAt
+          });
+        }
+      }
+    }
+    
+    // Convert map to array and limit to 10
+    const purchases = Array.from(bookMap.values()).slice(0, 10);
 
     res.json({ purchases });
   } catch (error) {

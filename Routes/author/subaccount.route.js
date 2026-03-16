@@ -18,7 +18,7 @@ router.post('/create', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Subaccount already exists' });
     }
 
-    // Create subaccount on Paystack
+    // Create subaccount on Paystack with automatic settlement
     const response = await axios.post(
       'https://api.paystack.co/subaccount',
       {
@@ -29,7 +29,8 @@ router.post('/create', authMiddleware, async (req, res) => {
         description: `Subaccount for ${author.displayName}`,
         primary_contact_email: author.email,
         primary_contact_name: author.fullName,
-        primary_contact_phone: author.phone || ''
+        primary_contact_phone: author.phone || '',
+        settlement_schedule: 'auto'
       },
       {
         headers: {

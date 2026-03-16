@@ -1,6 +1,5 @@
 require('./config/env');
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 const Admin = require('./models/Admin.model');
 const connectDB = require('./config/db');
 
@@ -8,18 +7,16 @@ const createSuperAdmin = async () => {
   try {
     await connectDB();
 
-    const existingAdmin = await Admin.findOne({ email: 'owolabiidowu99@gmail.com' });
+    const existingAdmin = await Admin.findOne({ email: 'ishelfishelfishelf@gmail.com' });
     
     if (existingAdmin) {
       console.log('Super admin already exists');
       process.exit(0);
     }
 
-    const hashedPassword = await bcrypt.hash('superadmin', 10);
-    
     const superAdmin = new Admin({
-      email: 'owolabiidowu99@gmail.com',
-      password: hashedPassword,
+      email: 'ishelfishelfishelf@gmail.com',
+      password: null,
       fullName: 'Super Admin',
       role: 'superadmin',
       isActive: true,

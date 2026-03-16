@@ -21,6 +21,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 connectDB();
 
 
+
 // Routes
 app.use('/api/authors', authorRoutes);
 app.use('/api/author', authorRoutes); // Alias for singular form
