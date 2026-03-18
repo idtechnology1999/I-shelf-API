@@ -36,7 +36,9 @@ router.get('/', authMiddleware, async (req, res) => {
       status: txn.status,
       paymentReference: txn.paymentReference,
       createdAt: txn.createdAt,
-      image: txn.book?.coverImage ? `${process.env.API_URL || 'http://localhost:5000'}/${txn.book.coverImage}` : null
+      image: txn.book?.coverImage
+        ? (txn.book.coverImage.startsWith('http') ? txn.book.coverImage : `${process.env.API_URL || 'http://localhost:5000'}/${txn.book.coverImage}`)
+        : null
     }));
 
     res.json({
@@ -82,7 +84,9 @@ router.get('/:id', authMiddleware, async (req, res) => {
       paymentReference: transaction.paymentReference,
       paystackResponse: transaction.paystackResponse,
       createdAt: transaction.createdAt,
-      image: transaction.book?.coverImage ? `${process.env.API_URL || 'http://localhost:5000'}/${transaction.book.coverImage}` : null
+      image: transaction.book?.coverImage
+        ? (transaction.book.coverImage.startsWith('http') ? transaction.book.coverImage : `${process.env.API_URL || 'http://localhost:5000'}/${transaction.book.coverImage}`)
+        : null
     };
 
     res.json({ transaction: formattedTransaction });

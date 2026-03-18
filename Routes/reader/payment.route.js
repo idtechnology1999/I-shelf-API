@@ -79,36 +79,39 @@ router.post('/initialize', authMiddleware, async (req, res) => {
     const { bookId, email } = req.body;
 
     const book = await Book.findById(bookId).populate('authorId');
-    if (!book || book.status !== 'published') {
+    if (!book || !['published', 'approved'].includes(book.status)) {
       return res.status(404).json({ message: 'Book not found' });
     }
 
     const author = book.authorId;
-    if (!author.subaccountCode) {
-      return res.status(400).json({ message: 'Author payment account not configured' });
-    }
 
     // Calculate amounts
     const amount = book.price;
     const authorAmount = Math.round(amount * 0.80);
     const platformCommission = amount - authorAmount;
 
+    // Build Paystack payload — only add split if author has a subaccount
+    const paystackPayload = {
+      email,
+      amount: amount * 100,
+      metadata: {
+        readerId,
+        bookId,
+        authorId: author._id,
+        bookTitle: book.title
+      }
+    };
+
+    if (author.subaccountCode) {
+      paystackPayload.subaccount = author.subaccountCode;
+      paystackPayload.transaction_charge = platformCommission * 100;
+      paystackPayload.bearer = 'subaccount';
+    }
+
     // Initialize payment with Paystack
     const response = await axios.post(
       'https://api.paystack.co/transaction/initialize',
-      {
-        email,
-        amount: amount * 100, // Convert to kobo
-        subaccount: author.subaccountCode,
-        transaction_charge: platformCommission * 100,
-        bearer: 'subaccount',
-        metadata: {
-          readerId,
-          bookId,
-          authorId: author._id,
-          bookTitle: book.title
-        }
-      },
+      paystackPayload,
       {
         headers: {
           Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,

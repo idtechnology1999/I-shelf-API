@@ -1,6 +1,4 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const Book = require('../../models/Book.model');
 const Transaction = require('../../models/Transaction.model');
 const Author = require('../../models/Author.model');
@@ -13,7 +11,7 @@ router.get('/', async (req, res) => {
   try {
     const { search, category } = req.query;
     
-    let query = { status: { $nin: ['draft', 'rejected'] } };
+    let query = { status: { $nin: ['draft', 'rejected', 'deleted'] } };
     
     if (search) {
       query.$or = [
@@ -36,26 +34,6 @@ router.get('/', async (req, res) => {
     const validBooks = books.filter(book => book.authorId);
 
     res.json({ books: validBooks });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// GET BOOK DETAILS WITH AUTHOR VIRTUAL ACCOUNT
-router.get('/:bookId', async (req, res) => {
-  try {
-    const book = await Book.findById(req.params.bookId)
-      .populate('authorId', 'displayName fullName virtualAccount');
-
-    if (!book || ['draft', 'rejected'].includes(book.status)) {
-      return res.status(404).json({ message: 'Book not found' });
-    }
-
-    res.json({ 
-      book,
-      paymentAccount: book.authorId.virtualAccount || null
-    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -86,63 +64,49 @@ router.get('/my/purchases', authMiddleware, async (req, res) => {
 router.get('/download/:bookId', async (req, res) => {
   try {
     let readerId;
-    
-    // Check for token in Authorization header or query parameter
     const authHeader = req.headers.authorization;
     const tokenFromQuery = req.query.token;
-    
+    const jwt = require('jsonwebtoken');
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      // Use middleware for header-based auth
-      const jwt = require('jsonwebtoken');
-      const token = authHeader.substring(7);
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        readerId = decoded.id;
-      } catch (error) {
-        return res.status(401).json({ message: 'Invalid token' });
-      }
+      try { readerId = jwt.verify(authHeader.substring(7), process.env.JWT_SECRET).id; }
+      catch { return res.status(401).json({ message: 'Invalid token' }); }
     } else if (tokenFromQuery) {
-      // Handle query parameter token for web downloads
-      const jwt = require('jsonwebtoken');
-      try {
-        const decoded = jwt.verify(tokenFromQuery, process.env.JWT_SECRET);
-        readerId = decoded.id;
-      } catch (error) {
-        return res.status(401).json({ message: 'Invalid token' });
-      }
+      try { readerId = jwt.verify(tokenFromQuery, process.env.JWT_SECRET).id; }
+      catch { return res.status(401).json({ message: 'Invalid token' }); }
     } else {
       return res.status(401).json({ message: 'No token provided' });
     }
-    
+
     const { bookId } = req.params;
-
-    // Verify user has purchased this book
-    const transaction = await Transaction.findOne({
-      reader: readerId,
-      book: bookId,
-      status: 'completed'
-    });
-
-    if (!transaction) {
-      return res.status(403).json({ message: 'You have not purchased this book' });
-    }
+    const transaction = await Transaction.findOne({ reader: readerId, book: bookId, status: 'completed' });
+    if (!transaction) return res.status(403).json({ message: 'You have not purchased this book' });
 
     const book = await Book.findById(bookId);
-    if (!book || !book.pdfFile) {
-      return res.status(404).json({ message: 'Book file not found' });
-    }
+    if (!book || !book.pdfFile) return res.status(404).json({ message: 'Book file not found' });
 
-    const filePath = path.join(__dirname, '../../', book.pdfFile);
-    
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'Book file not found on server' });
-    }
+    // Use stored extension, fall back to detecting from URL last segment, default pdf
+    const ext = book.pdfFileExt || (() => {
+      const lastSegment = (book.pdfFile.split('?')[0].split('/').pop() || '');
+      const dotIndex = lastSegment.lastIndexOf('.');
+      return dotIndex !== -1 ? lastSegment.substring(dotIndex + 1).toLowerCase() : 'pdf';
+    })();
+    const safeTitle = (book.title || 'book').replace(/[^a-zA-Z0-9 _-]/g, '').trim();
+    const filename = `${safeTitle}.${ext}`;
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${book.title}.pdf"`);
-    
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    const https = require('https');
+    const http = require('http');
+    const protocol = book.pdfFile.startsWith('https') ? https : http;
+
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', ext === 'docx' || ext === 'doc' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf');
+
+    protocol.get(book.pdfFile, (fileStream) => {
+      fileStream.pipe(res);
+    }).on('error', () => {
+      res.status(500).json({ message: 'Failed to download file' });
+    });
+    return;
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -155,37 +119,19 @@ router.get('/read/:bookId', authMiddleware, async (req, res) => {
     const readerId = req.user.id;
     const { bookId } = req.params;
 
-    // Verify user has purchased this book
-    const transaction = await Transaction.findOne({
-      reader: readerId,
-      book: bookId,
-      status: 'completed'
-    });
-
-    if (!transaction) {
-      return res.status(403).json({ message: 'You have not purchased this book' });
-    }
+    const transaction = await Transaction.findOne({ reader: readerId, book: bookId, status: 'completed' });
+    if (!transaction) return res.status(403).json({ message: 'You have not purchased this book' });
 
     const book = await Book.findById(bookId).populate('authorId', 'displayName');
-    if (!book || !book.pdfFile) {
-      return res.status(404).json({ message: 'Book not found' });
-    }
+    if (!book || !book.pdfFile) return res.status(404).json({ message: 'Book not found' });
 
-    // Check if file exists
-    const filePath = path.join(__dirname, '../../', book.pdfFile);
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'Book file not found on server' });
-    }
-
-    const baseUrl = process.env.PORT ? `http://localhost:${process.env.PORT}` : `${req.protocol}://${req.get('host')}`;
-    const pdfUrl = book.pdfFile.startsWith('/') ? `${baseUrl}${book.pdfFile}` : `${baseUrl}/${book.pdfFile}`;
-    
-    res.json({ 
+    // Allow reading even if book is deleted (reader already purchased it)
+    res.json({
       book: {
         _id: book._id,
         title: book.title,
         author: book.authorId?.displayName,
-        pdfUrl,
+        pdfUrl: book.pdfFile,
         pageCount: book.pageCount
       }
     });
@@ -195,68 +141,73 @@ router.get('/read/:bookId', authMiddleware, async (req, res) => {
   }
 });
 
-// STREAM PDF FOR READING
+// STREAM PDF FOR READING - redirect to Cloudinary URL
 router.get('/stream/:bookId', async (req, res) => {
   try {
     let readerId;
-    
-    // Check for token in Authorization header or query parameter
     const authHeader = req.headers.authorization;
     const tokenFromQuery = req.query.token;
-    
+    const jwt = require('jsonwebtoken');
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      const jwt = require('jsonwebtoken');
-      const token = authHeader.substring(7);
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        readerId = decoded.id;
-      } catch (error) {
-        return res.status(401).json({ message: 'Invalid token' });
-      }
+      try { readerId = jwt.verify(authHeader.substring(7), process.env.JWT_SECRET).id; }
+      catch { return res.status(401).json({ message: 'Invalid token' }); }
     } else if (tokenFromQuery) {
-      const jwt = require('jsonwebtoken');
-      try {
-        const decoded = jwt.verify(tokenFromQuery, process.env.JWT_SECRET);
-        readerId = decoded.id;
-      } catch (error) {
-        return res.status(401).json({ message: 'Invalid token' });
-      }
+      try { readerId = jwt.verify(tokenFromQuery, process.env.JWT_SECRET).id; }
+      catch { return res.status(401).json({ message: 'Invalid token' }); }
     } else {
       return res.status(401).json({ message: 'No token provided' });
     }
-    
+
     const { bookId } = req.params;
-
-    // Verify user has purchased this book
-    const transaction = await Transaction.findOne({
-      reader: readerId,
-      book: bookId,
-      status: 'completed'
-    });
-
-    if (!transaction) {
-      return res.status(403).json({ message: 'You have not purchased this book' });
-    }
+    const transaction = await Transaction.findOne({ reader: readerId, book: bookId, status: 'completed' });
+    if (!transaction) return res.status(403).json({ message: 'You have not purchased this book' });
 
     const book = await Book.findById(bookId);
-    if (!book || !book.pdfFile) {
-      return res.status(404).json({ message: 'Book file not found' });
-    }
+    if (!book || !book.pdfFile) return res.status(404).json({ message: 'Book file not found' });
 
-    const filePath = path.join(__dirname, '../../', book.pdfFile);
-    
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'Book file not found on server' });
-    }
+    // Use stored extension, fall back to detecting from URL last segment, default pdf
+    const ext = book.pdfFileExt || (() => {
+      const lastSegment = (book.pdfFile.split('?')[0].split('/').pop() || '');
+      const dotIndex = lastSegment.lastIndexOf('.');
+      return dotIndex !== -1 ? lastSegment.substring(dotIndex + 1).toLowerCase() : 'pdf';
+    })();
+    const contentType = ext === 'docx' || ext === 'doc' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf';
 
-    const stat = fs.statSync(filePath);
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Length', stat.size);
+    const https = require('https');
+    const http = require('http');
+    const protocol = book.pdfFile.startsWith('https') ? https : http;
+
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', 'inline');
-    res.setHeader('Accept-Ranges', 'bytes');
-    
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    protocol.get(book.pdfFile, (fileStream) => {
+      fileStream.pipe(res);
+    }).on('error', () => {
+      res.status(500).json({ message: 'Failed to stream file' });
+    });
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET BOOK DETAILS WITH AUTHOR VIRTUAL ACCOUNT — must be last (wildcard)
+router.get('/:bookId', async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.bookId)
+      .populate('authorId', 'displayName fullName virtualAccount');
+
+    if (!book || ['draft', 'rejected'].includes(book.status)) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+
+    res.json({
+      book,
+      paymentAccount: book.authorId.virtualAccount || null
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

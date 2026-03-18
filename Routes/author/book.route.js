@@ -1,75 +1,26 @@
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const pdfParse = require('pdf-parse');
 const Book = require('../../models/Book.model');
-const Payment = require('../../models/Payment.model');
+const Author = require('../../models/Author.model');
 const authMiddleware = require('../../middlewares/authMiddleware');
 const { verifyISBN } = require('../../services/isbn.service');
+const { 
+  coverStorage, 
+  pdfStorage, 
+  deleteFromCloudinary, 
+  deletePdfFromCloudinary 
+} = require('../../config/cloudinary');
 
 const router = express.Router();
 
-// Create upload directories
-const uploadDirs = [
-  'uploads/books/covers',
-  'uploads/books/pdfs'
-];
-
-uploadDirs.forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
-
-// Multer storage for cover images
-const coverStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/books/covers');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'cover-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-// Multer storage for PDF files
-const pdfStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/books/pdfs');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'book-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
 const uploadCover = multer({
   storage: coverStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (extname && mimetype) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'));
-    }
-  }
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
 });
 
 const uploadPdf = multer({
   storage: pdfStorage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
-  fileFilter: (req, file, cb) => {
-    const allowedMimes = ['application/pdf', 'application/x-pdf', 'application/octet-stream'];
-    if (allowedMimes.includes(file.mimetype) || file.originalname.toLowerCase().endsWith('.pdf')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only PDF files are allowed'));
-    }
-  }
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB
 });
 
 // CREATE/UPDATE BOOK (Step by step)
@@ -78,41 +29,23 @@ router.post('/upload', authMiddleware, async (req, res) => {
     const authorId = req.user.id;
     const bookData = req.body;
 
-    // Check author has paid upload fee
-    const Author = require('../../models/Author.model');
     const author = await Author.findById(authorId).select('hasPaidUploadFee');
-
     if (!author?.hasPaidUploadFee) {
       return res.status(403).json({ message: 'No active payment found. Please pay upload fee first.' });
     }
 
-    // Find the payment record for linking
-    const activePayment = await Payment.findOne({
-      authorId,
-      status: 'success'
-    }).sort({ createdAt: -1 });
-
-    // Check if book already exists for this payment
-    let book = activePayment ? await Book.findOne({ paymentId: activePayment._id, status: 'draft' }) : null;
+    let book = await Book.findOne({ authorId, status: 'draft' }).sort({ createdAt: -1 });
 
     if (book) {
       Object.assign(book, bookData);
       book.updatedAt = new Date();
       await book.save();
     } else {
-      book = new Book({
-        authorId,
-        paymentId: activePayment?._id,
-        ...bookData
-      });
+      book = new Book({ authorId, ...bookData });
       await book.save();
     }
 
-    res.json({
-      success: true,
-      message: 'Book data saved successfully',
-      book
-    });
+    res.json({ success: true, message: 'Book data saved successfully', book });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -123,13 +56,6 @@ router.post('/upload', authMiddleware, async (req, res) => {
 router.get('/draft', authMiddleware, async (req, res) => {
   try {
     const authorId = req.user.id;
-    const Author = require('../../models/Author.model');
-    const author = await Author.findById(authorId).select('hasPaidUploadFee');
-
-    if (!author?.hasPaidUploadFee) {
-      return res.json({ book: null });
-    }
-
     const book = await Book.findOne({ authorId, status: 'draft' }).sort({ createdAt: -1 });
     res.json({ book });
   } catch (error) {
@@ -143,24 +69,13 @@ router.get('/my-books', authMiddleware, async (req, res) => {
   try {
     const authorId = req.user.id;
     const Transaction = require('../../models/Transaction.model');
-    
     const books = await Book.find({ authorId }).sort({ createdAt: -1 });
-    
-    // Get sales count for each book
-    const booksWithSales = await Promise.all(
-      books.map(async (book) => {
-        const salesCount = await Transaction.countDocuments({
-          book: book._id,
-          status: 'completed'
-        });
-        
-        return {
-          ...book.toObject(),
-          salesCount
-        };
-      })
-    );
-    
+
+    const booksWithSales = await Promise.all(books.map(async (book) => {
+      const salesCount = await Transaction.countDocuments({ book: book._id, status: 'completed' });
+      return { ...book.toObject(), salesCount };
+    }));
+
     res.json({ books: booksWithSales });
   } catch (error) {
     console.error(error);
@@ -236,12 +151,6 @@ router.post('/complete', authMiddleware, async (req, res) => {
   try {
     const authorId = req.user.id;
 
-    const Author = require('../../models/Author.model');
-    const author = await Author.findById(authorId).select('hasPaidUploadFee');
-    if (!author?.hasPaidUploadFee) {
-      return res.status(404).json({ message: 'No active payment found' });
-    }
-
     const book = await Book.findOne({ authorId, status: 'draft' }).sort({ createdAt: -1 });
 
     if (!book) {
@@ -299,24 +208,24 @@ router.post('/upload-cover', authMiddleware, uploadCover.single('coverImage'), a
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const Author = require('../../models/Author.model');
     const author = await Author.findById(authorId).select('hasPaidUploadFee');
     if (!author?.hasPaidUploadFee) {
       return res.status(403).json({ message: 'No active payment found' });
     }
-    const activePayment = await Payment.findOne({ authorId, status: 'success' }).sort({ createdAt: -1 });
+
     const book = await Book.findOne({ authorId, status: 'draft' }).sort({ createdAt: -1 });
+
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });
     }
-    if (book.coverImage) {
-      const oldPath = path.join(__dirname, '../../', book.coverImage);
-      if (fs.existsSync(oldPath)) {
-        fs.unlinkSync(oldPath);
-      }
+
+    // Delete old cover from Cloudinary if exists
+    if (book.coverImage && book.coverImagePublicId) {
+      await deleteFromCloudinary(book.coverImagePublicId);
     }
 
-    book.coverImage = `uploads/books/covers/${req.file.filename}`;
+    book.coverImage = req.file.path;
+    book.coverImagePublicId = req.file.filename;
     await book.save();
 
     res.json({
@@ -339,7 +248,6 @@ router.post('/upload-pdf', authMiddleware, uploadPdf.single('pdfFile'), async (r
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const Author = require('../../models/Author.model');
     const author = await Author.findById(authorId).select('hasPaidUploadFee');
     if (!author?.hasPaidUploadFee) {
       return res.status(403).json({ message: 'No active payment found' });
@@ -350,36 +258,20 @@ router.post('/upload-pdf', authMiddleware, uploadPdf.single('pdfFile'), async (r
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });
     }
-    if (book.pdfFile) {
-      const oldPath = path.join(__dirname, '../../', book.pdfFile);
-      if (fs.existsSync(oldPath)) {
-        fs.unlinkSync(oldPath);
-      }
+
+    // Delete old PDF from Cloudinary if exists
+    if (book.pdfFile && book.pdfFilePublicId) {
+      await deletePdfFromCloudinary(book.pdfFilePublicId);
     }
 
-    book.pdfFile = `uploads/books/pdfs/${req.file.filename}`;
+    book.pdfFile = req.file.path;
+    book.pdfFilePublicId = req.file.filename;
     await book.save();
-    
-    // Try to extract page count from PDF (optional, non-blocking)
-    setImmediate(async () => {
-      try {
-        const pdfPath = path.join(__dirname, '../../', book.pdfFile);
-        const dataBuffer = fs.readFileSync(pdfPath);
-        const pdfData = await pdfParse(dataBuffer);
-        if (pdfData && pdfData.numpages) {
-          book.pageCount = pdfData.numpages;
-          await book.save();
-        }
-      } catch (pdfError) {
-        console.error('Could not extract PDF page count:', pdfError.message);
-      }
-    });
 
     res.json({
       success: true,
       message: 'PDF file uploaded successfully',
-      pdfFile: book.pdfFile,
-      pageCount: book.pageCount || null
+      pdfFile: book.pdfFile
     });
   } catch (error) {
     console.error('PDF upload error:', error);

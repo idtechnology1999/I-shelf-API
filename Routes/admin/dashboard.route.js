@@ -101,7 +101,9 @@ router.get('/activities', authMiddleware, async (req, res) => {
         title: `${authorName} uploaded "${bookTitle}"`,
         time: book.createdAt,
         badgeColor: { bg: '#fce4ec', text: '#C81E4C' },
-        image: book.coverImage ? `${process.env.API_URL || 'http://localhost:5000'}/${book.coverImage}` : null,
+        image: book.coverImage
+          ? (book.coverImage.startsWith('http') ? book.coverImage : `${process.env.API_URL || 'http://localhost:5000'}/${book.coverImage}`)
+          : null,
         bookId: book._id
       });
     });
@@ -141,7 +143,9 @@ router.get('/activities', authMiddleware, async (req, res) => {
         title: `${readerName} purchased "${bookTitle}"`,
         time: transaction.createdAt,
         badgeColor: { bg: '#dbeafe', text: '#1d4ed8' },
-        image: transaction.book?.coverImage ? `${process.env.API_URL || 'http://localhost:5000'}/${transaction.book.coverImage}` : null,
+        image: transaction.book?.coverImage
+          ? (transaction.book.coverImage.startsWith('http') ? transaction.book.coverImage : `${process.env.API_URL || 'http://localhost:5000'}/${transaction.book.coverImage}`)
+          : null,
         transactionId: transaction._id
       });
     });

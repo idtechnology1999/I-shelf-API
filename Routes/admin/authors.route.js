@@ -2,6 +2,7 @@ const express = require('express');
 const Author = require('../../models/Author.model');
 const Notification = require('../../models/Notification.model');
 const authMiddleware = require('../../middlewares/authMiddleware');
+const { deleteFromCloudinary, deletePdfFromCloudinary } = require('../../config/cloudinary');
 
 const router = express.Router();
 
@@ -106,8 +107,18 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     const Transaction = require('../../models/Transaction.model');
     const Payment = require('../../models/Payment.model');
 
-    // Delete all author's books
+    // Delete all author's books + clean up Cloudinary files
+    const authorBooks = await Book.find({ authorId: req.params.id });
+    for (const book of authorBooks) {
+      if (book.coverImagePublicId) await deleteFromCloudinary(book.coverImagePublicId);
+      if (book.pdfFilePublicId) await deletePdfFromCloudinary(book.pdfFilePublicId);
+    }
     await Book.deleteMany({ authorId: req.params.id });
+
+    // Clean up author profile image from Cloudinary
+    if (author.profileImage && author.profileImage.startsWith('http')) {
+      await deleteFromCloudinary(`ishelf/profiles/author-${req.params.id}`);
+    }
 
     // Delete all author's transactions
     await Transaction.deleteMany({ author: req.params.id });

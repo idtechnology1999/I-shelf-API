@@ -3,6 +3,7 @@ const Book = require('../../models/Book.model');
 const Author = require('../../models/Author.model');
 const authMiddleware = require('../../middlewares/authMiddleware');
 const { verifyISBN } = require('../../services/isbn.service');
+const { deleteFromCloudinary, deletePdfFromCloudinary } = require('../../config/cloudinary');
 
 const router = express.Router();
 
@@ -204,10 +205,14 @@ router.patch('/:id/reject', authMiddleware, async (req, res) => {
   }
 });
 
-// DELETE BOOK
+// DELETE BOOK (soft delete - preserve for readers who purchased)
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    const book = await Book.findByIdAndDelete(req.params.id);
+    const book = await Book.findByIdAndUpdate(
+      req.params.id,
+      { status: 'deleted' },
+      { new: true }
+    );
 
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });

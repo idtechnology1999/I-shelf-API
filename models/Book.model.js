@@ -25,11 +25,14 @@ const bookSchema = new mongoose.Schema({
   description: { type: String },
   keywords: [String],
   coverImage: { type: String },
+  coverImagePublicId: { type: String },
   pdfFile: { type: String },
+  pdfFilePublicId: { type: String },
+  pdfFileExt: { type: String, default: 'pdf' },
   pageCount: { type: Number },
   price: { type: Number },
   
-  status: { type: String, enum: ['draft', 'pending', 'approved', 'published', 'rejected'], default: 'draft' },
+  status: { type: String, enum: ['draft', 'pending', 'approved', 'published', 'rejected', 'deleted'], default: 'draft' },
   rejectionReason: { type: String },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
